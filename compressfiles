@@ -1,0 +1,20 @@
+cd /var/log
+gzip messages-*
+gzip maillog-*
+gzip cron-*
+gzip spooler-*
+gzip secure-*
+cd /backups/syslog
+backup=$(date -d "yesterday" '+%Y%m%d%H%M')
+mkdir syslog$backup
+cd syslog$backup
+cp -rf /var/log/*.gz .
+cd ../
+echo System Logs backup done
+tar -czf syslog$backup.tar.gz  syslog$backup
+echo tar complete
+rm -rf syslog$backup
+cd /var/log/
+rm -rf *.gz
+#scp -P22 -r i8Microbank$backup root@10.0.1.20:/backups/jsqa/i8Microbankappbackup
+#/usr/bin/find /backups/i8Microbankapp/ -mtime +5 -delete
