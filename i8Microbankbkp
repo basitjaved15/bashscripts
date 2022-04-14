@@ -1,0 +1,12 @@
+cd /backups/i8Microbankapp 
+backup=$(date +"%Y%m%d%H%M")
+mkdir i8Microbank$backup
+cd i8Microbank$backup
+cp -rf /opt/jboss-as-7.1.1.Final/standalone/deployments/i8Microbank.war .
+echo i8Microbank app backup done
+tar -czf i8Microbank.tar.gz  i8Microbank.war 
+echo tar complete
+rm -rf i8Microbank.war 
+cd ..
+scp -P22 -r i8Microbank$backup root@10.0.1.20:/backups/jsqa/i8Microbankappbackup
+/usr/bin/find /backups/i8Microbankapp/ -mtime +5 -delete
