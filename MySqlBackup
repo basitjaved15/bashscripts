@@ -1,0 +1,82 @@
+#!/bin/bash 
+# Simple script to backup MySQL databases 
+# 
+# You have to enter the credintials, the scritp will make backup of all the databases 
+# including information schema and perfomance schema as well, and store it as a gunzip format 
+# in the backup directory. Each databases are dump as seperate files. 
+# 
+# This will maintain 30 days backup. 
+#################################################################################################
+# Parent backup directory
+backup_parent_dir="/backups/redmine/"
+#Enter multiple email ID using space
+Email="scmt@inov8.com.pk"
+Email_Sender="abdul.basit@inov8.com.pk"
+Email_Content="/tmp/Mail_db"
+WEIGHT=30 # 30 days
+# MySQL settings
+mysql_user="root"
+mysql_password='lahore'
+mysql_databases="Default_database"
+#Creating file for email
+[ ! -f ${Email_Content} ] && touch ${Email_Content} || :> ${Email_Content}
+E_mail(){
+ for email in ${Email}
+ do
+# cat ${Email_Content} | mail -s "Notification: Mysql Database Backup $@ from MyServer " ${email} -r ${Email_Sender}
+ cat ${Email_Content} | mail -s "Notification: Redmine Database Backup $@ from Redmine Server " -r redminebackup@inov8.com.pk scmt@inov8.com.pk
+ done
+ }
+# Read MySQL password from stdin if empty
+if [ -z "${mysql_password}" ]; then
+ echo -n "Enter MySQL ${mysql_user} password: " >> ${Email_Content}
+ read -s mysql_password
+ echo
+fi
+# Check MySQL password
+echo exit | mysql --user=${mysql_user} --password=${mysql_password} -B 2>/dev/null
+if [ "$?" -gt 0 ]; then
+ echo "MySQL ${mysql_user} password incorrect" >> ${Email_Content}
+ E_mail Failed
+ exit 1
+else
+ echo "MySQL ${mysql_user} password correct." >> ${Email_Content}
+fi
+# Create backup directory and set permissions
+backup_date=`date +%Y_%m_%d_%H_%M`
+backup_dir="${backup_parent_dir}/${backup_date}"
+echo "Backup directory: ${backup_dir}" >> ${Email_Content}
+mkdir -p "${backup_dir}"
+chmod 700 "${backup_dir}"
+# Get MySQL databases
+mysql_databases=`echo 'show databases' | mysql --user=${mysql_user} --password=${mysql_password} -B | sed /^Database$/d`
+# Backup and compress each database
+for database in $mysql_databases
+do
+if [[ "$database" =~ "information_schema" || "$database" =~ "performance_schema" ]] ; then
+ additional_mysqldump_params="--skip-lock-tables"
+else
+ additional_mysqldump_params=""
+fi
+ echo "Creating backup of \"${database}\" database" >> ${Email_Content}
+ mysqldump ${additional_mysqldump_params} --user=${mysql_user} --password=${mysql_password} ${database} | gzip > "${backup_dir}/${database}.sql.gz"
+ chmod 600 "${backup_dir}/${database}.sql.gz"
+done
+
+##Removing folder older than 30 days
+ECOUT=""
+echo "" >> ${Email_Content}
+ECOUT=`find ${backup_parent_dir} -type d -ctime +$WEIGHT`
+if [ -z $ECOUT ]; then
+ echo "No more older backups to remove" >> ${Email_Content}
+ E_mail Success
+ exit
+else
+ echo "Following older backups are removed" >> ${Email_Content}
+ for i in $ECOUT
+ do
+ rm -rvf $i 1>>${Email_Content} 2>>${Email_Content}
+ done
+ E_mail Success
+ exit
+fi
