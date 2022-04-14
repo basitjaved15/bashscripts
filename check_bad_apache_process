@@ -1,0 +1,14 @@
+#!/bin/bash
+result=""
+result=`ps aux |grep apache |grep -v /usr/sbin/httpd |grep -v "grep apache" |grep -v check_bad_apache`
+if [ "$result" = "" ]
+then
+ echo "0 Bad apache Processes Running"
+ exit 0
+else
+ echo "Bad apache Processes Running"
+ ps aux |grep apache |grep -v /usr/sbin/httpd |grep -v "grep apache" |grep -v check_bad_apache > /tmp/BadApacheProcessNagiosCheckOutput.txt
+ cat /tmp/BadApacheProcessNagiosCheckOutput.txt
+ rm -Rf /tmp/BadApacheProcessNagiosCheckOutput.txt
+ exit 2
+fi
