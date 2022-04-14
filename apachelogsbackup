@@ -1,0 +1,33 @@
+##### Script to move Apache logs from application to backup.####
+
+cd /backups/apachelogs
+
+folder=$(TZ=GMT+24 date +%Y%m%d-%H%M)
+
+mkdir $folder
+cd $folder
+
+mv /usr/apache2/logs/access_log .
+mv /usr/apache2/logs/error_log .
+mv /usr/apache2/logs/mod_jk.log .
+
+cd /usr/apache2/logs/
+
+touch access_log error_log mod_jk.log
+
+chown -R daemon.daemon access_log error_log mod_jk.log
+
+/usr/apache2/bin/apachectl -k graceful
+
+cd /backups/apachelogs/$folder
+
+
+zip -rq error_log.zip error_log
+sleep 1
+zip -rq access_log.zip access_log
+sleep 1
+zip -rq mod_jk.log.zip mod_jk.log
+sleep 3
+rm -rf error_log access_log mod_jk.log
+
+/usr/bin/find /backups/apachelogs/ -mtime +5 -delete
